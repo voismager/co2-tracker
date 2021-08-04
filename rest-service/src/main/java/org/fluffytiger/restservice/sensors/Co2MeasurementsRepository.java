@@ -31,12 +31,13 @@ public interface Co2MeasurementsRepository {
     Double getAverageOverLastNDays(UUID sensorId, int days);
     /**
      * @param sensorId id of specified sensor
-     * @param limit number of maximum retrieved measurements
+     * @param limit max number of retrieved measurements
+     * @param hours max number of hours to look back for measurements
      *
      * @return list of last co2 measurements for specified sensor,
      * sorted descending by time
      */
-    List<Integer> getLastMeasurements(UUID sensorId, int limit);
+    List<Integer> getLastMeasurements(UUID sensorId, int limit, int hours);
     /**
      * Determine whether the result of insert operation will be
      * visible immediately.

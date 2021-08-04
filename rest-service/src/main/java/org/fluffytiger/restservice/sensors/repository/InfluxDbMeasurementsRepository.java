@@ -11,7 +11,6 @@ import org.fluffytiger.restservice.sensors.Co2MeasurementsRepository;
 import org.fluffytiger.restservice.sensors.MeasureRecord;
 
 import javax.annotation.PreDestroy;
-import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -92,9 +91,9 @@ public class InfluxDbMeasurementsRepository implements Co2MeasurementsRepository
     }
 
     @Override
-    public List<Integer> getLastMeasurements(UUID sensorId, int limit) {
+    public List<Integer> getLastMeasurements(UUID sensorId, int limit, int hours) {
         var query = Flux.from(bucketName)
-            .range(makeNegative(10), ChronoUnit.MINUTES)
+            .range(makeNegative(hours), ChronoUnit.HOURS)
             .sort(List.of("_time"), true)
             .limit(limit)
             .filter(Restrictions.and(

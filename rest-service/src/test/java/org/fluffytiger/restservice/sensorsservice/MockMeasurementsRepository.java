@@ -45,9 +45,10 @@ class MockMeasurementsRepository implements Co2MeasurementsRepository {
     }
 
     @Override
-    public List<Integer> getLastMeasurements(UUID sensorId, int limit) {
+    public List<Integer> getLastMeasurements(UUID sensorId, int limit, int hours) {
         return records.stream()
             .filter(record -> record.getSensorId().equals(sensorId))
+            .filter(record -> record.getDate().isAfter(OffsetDateTime.now().minusHours(hours)))
             .map(MeasureRecord::getCo2)
             .limit(limit)
             .collect(toListReversed());

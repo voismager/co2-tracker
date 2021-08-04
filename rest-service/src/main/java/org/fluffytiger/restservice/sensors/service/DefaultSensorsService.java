@@ -25,7 +25,7 @@ public class DefaultSensorsService implements SensorsService {
 
     @Override
     public SensorStatus getStatus(UUID sensor) {
-        var lastRecords = this.measurements.getLastMeasurements(sensor, 3);
+        var lastRecords = this.measurements.getLastMeasurements(sensor, 3, 1);
 
         if (lastRecords.isEmpty()) return SensorStatus.OK;
 

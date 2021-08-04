@@ -3,6 +3,8 @@ package org.fluffytiger.restservice.measurements;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.domain.WritePrecision;
 import com.influxdb.client.write.Point;
+import com.influxdb.query.dsl.Flux;
+import com.influxdb.query.dsl.functions.restriction.Restrictions;
 import org.fluffytiger.restservice.sensors.MeasureRecord;
 import org.fluffytiger.restservice.sensors.repository.InfluxDbMeasurementsRepository;
 import org.junit.jupiter.api.Assertions;
@@ -11,6 +13,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import java.time.Instant;
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -34,17 +37,54 @@ class InfluxDbMeasurementsRepositoryTest extends AbstractInfluxDbTest {
     }
 
     @Test
+    void test_GetLastMeasurementsAfterInsert() {
+        OffsetDateTime now = OffsetDateTime.now();
+        UUID sensorId = UUID.fromString("e0001001-c03b-4a04-a25b-38f39be8ebba");
+
+        repository.insertRecord(new MeasureRecord(1000, now.minusMinutes(5), sensorId));
+        repository.insertRecord(new MeasureRecord(2000, now.minusMinutes(4), sensorId));
+        repository.insertRecord(new MeasureRecord(3000, now.minusMinutes(3), sensorId));
+        repository.insertRecord(new MeasureRecord(4000, now.minusMinutes(2), sensorId));
+        repository.insertRecord(new MeasureRecord(5000, now.minusMinutes(1), sensorId));
+
+        await()
+            .atMost(10, TimeUnit.SECONDS)
+            .until(() -> repository.getLastMeasurements(sensorId, 10, 1).size() == 5);
+
+        var result = repository.getLastMeasurements(sensorId, 10, 1);
+        Assertions.assertEquals(5, result.size());
+        Assertions.assertEquals(List.of(5000, 4000, 3000, 2000, 1000), result);
+    }
+
+    @Test
+    void test_GetMaxOverLastNDaysAfterInsert() {
+        OffsetDateTime now = OffsetDateTime.now();
+        UUID sensorId = UUID.fromString("e0201001-c03b-4a04-a25b-38f39be8ebba");
+
+        repository.insertRecord(new MeasureRecord(1000, now.minusMinutes(5), sensorId));
+        repository.insertRecord(new MeasureRecord(2000, now.minusMinutes(4), sensorId));
+        repository.insertRecord(new MeasureRecord(3000, now.minusMinutes(3), sensorId));
+        repository.insertRecord(new MeasureRecord(4000, now.minusMinutes(2), sensorId));
+        repository.insertRecord(new MeasureRecord(5000, now.minusMinutes(1), sensorId));
+
+        await()
+            .atMost(10, TimeUnit.SECONDS)
+            .until(() -> repository.getMaxOverLastNDays(sensorId, 1) == 5000);
+
+        var result = repository.getMaxOverLastNDays(sensorId, 1);
+        Assertions.assertEquals(5000, result);
+    }
+
+    @Test
     void test_Insert() {
         OffsetDateTime time = OffsetDateTime.now();
         UUID sensorId = UUID.fromString("e0000000-c03b-4a04-a25b-38f39be8ebba");
         var queryApi = influxDB.getQueryApi();
 
-        var selectQuery = String.format(
-            "from(bucket:\"%s\") " +
-                "|> range(start:-1h) " +
-                "|> filter(fn:(r) => r.sensor == \"%s\")",
-            BUCKET_NAME, sensorId
-        );
+        var selectQuery = Flux.from(BUCKET_NAME)
+            .range(-1L, ChronoUnit.HOURS)
+            .filter(Restrictions.tag("sensor").equal(sensorId.toString()))
+            .toString();
 
         var result = queryApi.query(selectQuery);
         Assertions.assertTrue(result.isEmpty());
@@ -97,7 +137,7 @@ class InfluxDbMeasurementsRepositoryTest extends AbstractInfluxDbTest {
     void test_GetLastMeasurements() {
         UUID sensorId = UUID.fromString("e0000003-c03b-4a04-a25b-38f39be8ebba");
 
-        Assertions.assertTrue(repository.getLastMeasurements(sensorId, 10).isEmpty());
+        Assertions.assertTrue(repository.getLastMeasurements(sensorId, 10, 1).isEmpty());
 
         List<Integer> co2 = List.of(100, 200, 300, 400);
         insertData(co2, sensorId);
@@ -106,7 +146,7 @@ class InfluxDbMeasurementsRepositoryTest extends AbstractInfluxDbTest {
         last = new ArrayList<>(last);
         Collections.reverse(last);
 
-        Assertions.assertEquals(last, repository.getLastMeasurements(sensorId, 3));
+        Assertions.assertEquals(last, repository.getLastMeasurements(sensorId, 3, 1));
     }
 
     @Test
@@ -120,8 +160,8 @@ class InfluxDbMeasurementsRepositoryTest extends AbstractInfluxDbTest {
         List<Integer> last = new ArrayList<>(co2);
         Collections.reverse(last);
 
-        Assertions.assertEquals(last, repository.getLastMeasurements(sensorId1, 10));
-        Assertions.assertTrue(repository.getLastMeasurements(sensorId2, 10).isEmpty());
+        Assertions.assertEquals(last, repository.getLastMeasurements(sensorId1, 10, 1));
+        Assertions.assertTrue(repository.getLastMeasurements(sensorId2, 10, 1).isEmpty());
     }
 
     private void insertData(List<Integer> co2, UUID sensorId) {
