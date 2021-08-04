@@ -1,0 +1,50 @@
+plugins {
+    id 'project.java-conventions'
+    id 'idea'
+}
+
+dependencies {
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-api', version: "${junitVersion}"
+    testImplementation group: 'org.junit.jupiter', name: 'junit-jupiter-params', version: "${junitVersion}"
+    testRuntimeOnly group: 'org.junit.jupiter', name: 'junit-jupiter-engine', version: "${junitVersion}"
+    testImplementation "org.testcontainers:testcontainers:1.15.3"
+    testImplementation "org.testcontainers:junit-jupiter:1.15.3"
+}
+
+test {
+    useJUnitPlatform()
+}
+
+configurations {
+    integrationTestImplementation.extendsFrom testImplementation
+    integrationTestRuntime.extendsFrom testRuntime
+}
+
+sourceSets {
+    integrationTest {
+        java {
+            compileClasspath += main.output + test.output
+            runtimeClasspath += main.output + test.output
+            srcDir file('src/integration-test/java')
+        }
+        resources {
+            srcDir file('src/integration-test/resources')
+        }
+    }
+}
+
+task integrationTest(type: Test) {
+    testClassesDirs = sourceSets.integrationTest.output.classesDirs
+    classpath = sourceSets.integrationTest.runtimeClasspath
+    useJUnitPlatform()
+    mustRunAfter(test)
+}
+
+check.dependsOn(integrationTest)
+
+idea {
+    module {
+        testSourceDirs += project.sourceSets.integrationTest.java.srcDirs
+        testSourceDirs += project.sourceSets.integrationTest.resources.srcDirs
+    }
+}

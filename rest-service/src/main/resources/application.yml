@@ -1,0 +1,10 @@
+spring:
+  influx:
+    url: http://${INFLUX_DB_HOST}:8086
+    org: ${INFLUX_DB_ORG}
+    bucket: ${INFLUX_DB_BUCKET}
+    token: ${INFLUX_DB_ADMIN_TOKEN}
+
+paths:
+  api:
+    v1: "/api/v1"

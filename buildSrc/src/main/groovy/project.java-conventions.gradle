@@ -1,0 +1,17 @@
+plugins {
+    id 'java'
+    id 'com.google.cloud.tools.jib'
+}
+
+repositories {
+    mavenCentral()
+}
+
+jib {
+    /* set base image to ensure reproducibility, bump it manually to a value
+     * returned by
+     docker images --digests --filter reference=gcr.io/distroless/java:11 \
+                   --format '{{.Digest}}' gcr.io/distroless/java
+     */
+    from.image = "gcr.io/distroless/java@sha256:65aa73135827584754f1f1949c59c3e49f1fed6c35a918fadba8b4638ebc9c5d"
+}

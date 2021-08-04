@@ -1,0 +1,33 @@
+version: "2"
+
+services:
+  influx-db:
+    image: influxdb:2.0.7
+    ports:
+      - "18086:8086"
+    restart: always
+    environment:
+      - DOCKER_INFLUXDB_INIT_MODE=setup
+      - DOCKER_INFLUXDB_INIT_PASSWORD=${INFLUX_DB_PASSWORD}
+      - DOCKER_INFLUXDB_INIT_USERNAME=${INFLUX_DB_USERNAME}
+      - DOCKER_INFLUXDB_INIT_ORG=${INFLUX_DB_ORG}
+      - DOCKER_INFLUXDB_INIT_BUCKET=${INFLUX_DB_BUCKET}
+      - DOCKER_INFLUXDB_INIT_ADMIN_TOKEN=${INFLUXDB_DB_ADMIN_TOKEN}
+    volumes:
+      - ./influx/data:/var/lib/influxdb2
+      - ./influx/config:/etc/influxdb2
+
+  rest-service:
+    image: co2sensors/rest-service:latest
+    ports:
+      - "8080:8080"
+    restart: always
+    environment:
+      - INFLUX_DB_HOST=influx-db
+      - INFLUX_DB_PASSWORD=${INFLUX_DB_PASSWORD}
+      - INFLUX_DB_USERNAME=${INFLUX_DB_USERNAME}
+      - INFLUX_DB_ORG=${INFLUX_DB_ORG}
+      - INFLUX_DB_BUCKET=${INFLUX_DB_BUCKET}
+      - INFLUX_DB_ADMIN_TOKEN=${INFLUXDB_DB_ADMIN_TOKEN}
+    depends_on:
+      - influx-db

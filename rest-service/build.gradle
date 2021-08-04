@@ -1,0 +1,25 @@
+plugins {
+    id 'project.service-conventions'
+}
+
+group 'org.fluffytiger'
+version '1.0-SNAPSHOT'
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    annotationProcessor "org.springframework.boot:spring-boot-configuration-processor"
+
+    implementation group: 'com.influxdb', name: 'influxdb-client-java', version: '3.1.0'
+    implementation group: 'com.influxdb', name: 'flux-dsl', version: '3.1.0'
+
+    testImplementation group: 'org.awaitility', name: 'awaitility', version: '3.0.0'
+}
+
+jib {
+    to {
+        image = "co2sensors/rest-service"
+    }
+}

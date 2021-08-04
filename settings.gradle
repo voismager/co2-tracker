@@ -1,0 +1,4 @@
+rootProject.name = 'co2-sensors'
+
+include 'rest-service'
+
