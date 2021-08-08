@@ -1,14 +1,15 @@
 package org.fluffytiger.restservice.sensors;
 
-import java.util.List;
+import org.fluffytiger.restservice.sensors.payload.LastMeasurements;
+
+import java.time.Instant;
 import java.util.UUID;
 
 public interface Co2MeasurementsRepository {
     /**
-     * Insert measure record into underlying storage.
+     * Insert measure record into underlying storage with seconds precision.
      * This method does not guarantee for record to be immediately written
      * and visible for queries.
-     * Please refer to {@link Co2MeasurementsRepository#isAsync()} to determine the exact behaviour.
      *
      * @param record record to insert
      */
@@ -31,16 +32,10 @@ public interface Co2MeasurementsRepository {
     Double getAverageOverLastNDays(UUID sensorId, int days);
     /**
      * @param sensorId id of specified sensor
-     * @param limit max number of retrieved measurements
-     * @param hours max number of hours to look back for measurements
+     * @param start the earliest time point to include in results
      *
      * @return list of last co2 measurements for specified sensor,
-     * sorted descending by time
+     * sorted ascending by time
      */
-    List<Integer> getLastMeasurements(UUID sensorId, int limit, int hours);
-    /**
-     * Determine whether the result of insert operation will be
-     * visible immediately.
-     */
-    boolean isAsync();
+    LastMeasurements getMeasurements(UUID sensorId, Instant start);
 }

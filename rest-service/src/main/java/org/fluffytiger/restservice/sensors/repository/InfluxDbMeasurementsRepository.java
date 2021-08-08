@@ -1,6 +1,7 @@
 package org.fluffytiger.restservice.sensors.repository;
 
 import com.influxdb.client.InfluxDBClient;
+import com.influxdb.client.QueryApi;
 import com.influxdb.client.WriteApi;
 import com.influxdb.client.WriteOptions;
 import com.influxdb.client.domain.WritePrecision;
@@ -9,8 +10,9 @@ import com.influxdb.query.dsl.Flux;
 import com.influxdb.query.dsl.functions.restriction.Restrictions;
 import org.fluffytiger.restservice.sensors.Co2MeasurementsRepository;
 import org.fluffytiger.restservice.sensors.MeasureRecord;
+import org.fluffytiger.restservice.sensors.payload.LastMeasurements;
 
-import javax.annotation.PreDestroy;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.temporal.ChronoUnit;
 import java.util.List;
@@ -18,24 +20,20 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 public class InfluxDbMeasurementsRepository implements Co2MeasurementsRepository {
-    private final InfluxDBClient influxDB;
     private final WriteApi writeApi;
+    private final QueryApi queryApi;
     private final String bucketName;
 
     public InfluxDbMeasurementsRepository(InfluxDBClient influxDB, String bucketName) {
-        this.influxDB = influxDB;
         this.writeApi = influxDB.getWriteApi(WriteOptions
             .builder()
             .batchSize(10000)
             .bufferLimit(50000)
+            .flushInterval(1000)
             .build()
         );
+        this.queryApi = influxDB.getQueryApi();
         this.bucketName = bucketName;
-    }
-
-    @PreDestroy
-    public void cleanup() {
-        influxDB.close();
     }
 
     @Override
@@ -59,7 +57,7 @@ public class InfluxDbMeasurementsRepository implements Co2MeasurementsRepository
             .max()
             .toString();
 
-        var result = this.influxDB.getQueryApi().query(query);
+        var result = this.queryApi.query(query);
 
         if (result.isEmpty()) {
             return 0;
@@ -80,7 +78,7 @@ public class InfluxDbMeasurementsRepository implements Co2MeasurementsRepository
             .mean()
             .toString();
 
-        var result = this.influxDB.getQueryApi().query(query);
+        var result = this.queryApi.query(query);
 
         if (result.isEmpty()) {
             return 0.0;
@@ -91,32 +89,30 @@ public class InfluxDbMeasurementsRepository implements Co2MeasurementsRepository
     }
 
     @Override
-    public List<Integer> getLastMeasurements(UUID sensorId, int limit, int hours) {
+    public LastMeasurements getMeasurements(UUID sensorId, Instant start) {
         var query = Flux.from(bucketName)
-            .range(makeNegative(hours), ChronoUnit.HOURS)
-            .sort(List.of("_time"), true)
-            .limit(limit)
+            .range(start)
             .filter(Restrictions.and(
                 Restrictions.measurement().equal("co2"),
                 Restrictions.tag("sensor").equal(sensorId.toString())
             ))
+            .keep(List.of("_value", "_field", "_time"))
             .toString();
 
-        var result = this.influxDB.getQueryApi().query(query);
+        var tables = this.queryApi.query(query);
 
-        if (result.isEmpty()) {
-            return List.of();
+        if (tables.isEmpty()) {
+            return LastMeasurements.EMPTY;
         } else {
-            return result.get(0).getRecords()
-                .stream()
-                .map(fluxRecord -> ((Number) fluxRecord.getValue()).intValue())
-                .collect(Collectors.toList());
-        }
-    }
+            var records = tables.get(0).getRecords();
+            var lastValueAt = records.get(records.size() - 1).getTime();
 
-    @Override
-    public boolean isAsync() {
-        return false;
+            return new LastMeasurements(records.stream()
+                .map(fluxRecord -> ((Number) fluxRecord.getValue()).intValue())
+                .collect(Collectors.toList()),
+                lastValueAt
+            );
+        }
     }
 
     private static long makeNegative(int value) {

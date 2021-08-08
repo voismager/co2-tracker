@@ -2,22 +2,28 @@ package org.fluffytiger.restservice.sensorsservice;
 
 import org.fluffytiger.restservice.sensors.Co2MeasurementsRepository;
 import org.fluffytiger.restservice.sensors.MeasureRecord;
+import org.fluffytiger.restservice.sensors.payload.LastMeasurements;
 
+import java.time.Instant;
 import java.time.OffsetDateTime;
-import java.util.Collections;
-import java.util.Deque;
-import java.util.LinkedList;
+import java.time.ZoneOffset;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.stream.Collector;
 import java.util.stream.Collectors;
 
 class MockMeasurementsRepository implements Co2MeasurementsRepository {
-    private final Deque<MeasureRecord> records = new LinkedList<>();
+    private final List<MeasureRecord> records = new ArrayList<>();
 
     @Override
     public void insertRecord(MeasureRecord record) {
-        records.addFirst(record);
+        var recordWithSec = new MeasureRecord(
+            record.getCo2(),
+            record.getDate().minusNanos(record.getDate().getNano()),
+            record.getSensorId()
+        );
+
+        records.add(recordWithSec);
     }
 
     @Override
@@ -45,24 +51,18 @@ class MockMeasurementsRepository implements Co2MeasurementsRepository {
     }
 
     @Override
-    public List<Integer> getLastMeasurements(UUID sensorId, int limit, int hours) {
-        return records.stream()
+    public LastMeasurements getMeasurements(UUID sensorId, Instant start) {
+        var records = this.records.stream()
+            .filter(record -> record.getDate().toInstant().isAfter(start) || record.getDate().toInstant().equals(start))
             .filter(record -> record.getSensorId().equals(sensorId))
-            .filter(record -> record.getDate().isAfter(OffsetDateTime.now().minusHours(hours)))
-            .map(MeasureRecord::getCo2)
-            .limit(limit)
-            .collect(toListReversed());
-    }
+            .collect(Collectors.toList());
 
-    public static <T> Collector<T, ?, List<T>> toListReversed() {
-        return Collectors.collectingAndThen(Collectors.toList(), l -> {
-            Collections.reverse(l);
-            return l;
-        });
-    }
-
-    @Override
-    public boolean isAsync() {
-        return true;
+        if (!records.isEmpty()) {
+            return new LastMeasurements(
+                records.stream().map(MeasureRecord::getCo2).collect(Collectors.toList()),
+                records.get(records.size() - 1).getDate().toInstant());
+        } else {
+            return LastMeasurements.EMPTY;
+        }
     }
 }

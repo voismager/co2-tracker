@@ -1,8 +1,9 @@
-package org.fluffytiger.restservice.measurements;
+package org.fluffytiger.restservice;
 
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import org.fluffytiger.restservice.sensors.repository.InfluxDbMeasurementsRepository;
+import org.fluffytiger.restservice.sensors.repository.InfluxDbSensorStatusRepository;
 import org.junit.ClassRule;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Bean;
@@ -15,10 +16,10 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 @SpringBootTest
 @SpringJUnitConfig(classes = AbstractInfluxDbTest.Initializer.class)
-abstract class AbstractInfluxDbTest {
-    static final int EXPOSED_PORT = 8086;
-    static final String BUCKET_NAME = "test_bucket";
-    static final String ORG_NAME = "test_org";
+public abstract class AbstractInfluxDbTest {
+    public static final int EXPOSED_PORT = 8086;
+    public static final String BUCKET_NAME = "test_bucket";
+    public static final String ORG_NAME = "test_org";
     private static final String IMAGE_NAME = "influxdb:2.0.7";
 
     @Container
@@ -51,6 +52,11 @@ abstract class AbstractInfluxDbTest {
         @Bean
         public InfluxDbMeasurementsRepository measurementsRepository(InfluxDBClient influxDB) {
             return new InfluxDbMeasurementsRepository(influxDB, BUCKET_NAME);
+        }
+
+        @Bean
+        public InfluxDbSensorStatusRepository sensorStatusRepository(InfluxDBClient influxDB) {
+            return new InfluxDbSensorStatusRepository(influxDB, BUCKET_NAME);
         }
     }
 }

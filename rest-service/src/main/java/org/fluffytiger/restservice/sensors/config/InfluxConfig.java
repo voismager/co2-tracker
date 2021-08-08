@@ -3,7 +3,9 @@ package org.fluffytiger.restservice.sensors.config;
 import com.influxdb.client.InfluxDBClient;
 import com.influxdb.client.InfluxDBClientFactory;
 import org.fluffytiger.restservice.sensors.Co2MeasurementsRepository;
+import org.fluffytiger.restservice.sensors.SensorStatusRepository;
 import org.fluffytiger.restservice.sensors.repository.InfluxDbMeasurementsRepository;
+import org.fluffytiger.restservice.sensors.repository.InfluxDbSensorStatusRepository;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
@@ -28,5 +30,10 @@ public class InfluxConfig {
     @Bean
     public Co2MeasurementsRepository co2MeasurementsRepository(InfluxDBClient influxDB) {
         return new InfluxDbMeasurementsRepository(influxDB, properties.getBucket());
+    }
+
+    @Bean
+    public SensorStatusRepository sensorStatusRepository(InfluxDBClient influxDB) {
+        return new InfluxDbSensorStatusRepository(influxDB, properties.getBucket());
     }
 }
